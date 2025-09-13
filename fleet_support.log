@@ -1,0 +1,32 @@
+2025-09-13 12:25:25,988 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:27:25,047 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:28:50,618 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:29:52,127 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:30:57,373 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:36:49,083 - cli - ERROR - npx not found. Please ensure Node.js and npm are properly installed and added to your system PATH. You may need to restart your terminal after installation.
+2025-09-13 12:37:42,782 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-13 12:37:45,347 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-13 12:38:47,064 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-13 12:38:49,812 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-13 12:40:44,702 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-13 12:40:50,301 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-13 12:40:51,195 - functions - INFO - Initializing fleet manager for fleet 1132012206985, main character 95147667
+2025-09-13 12:40:52,634 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:40:52,635 - functions - INFO - Fleet manager initialized successfully
+2025-09-13 12:41:53,632 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:42:20,939 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-13 12:42:23,079 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-13 12:42:23,960 - functions - INFO - Initializing fleet manager for fleet 1132012206985, main character 95147667
+2025-09-13 12:42:25,360 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:42:25,361 - functions - INFO - Fleet manager initialized successfully
+2025-09-13 12:43:26,302 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:44:27,328 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:45:28,301 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:46:29,254 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:47:30,237 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:48:38,654 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2025-09-13 12:48:40,662 - mcp.server.lowlevel.server - INFO - Processing request of type CallToolRequest
+2025-09-13 12:48:41,600 - functions - INFO - Initializing fleet manager for fleet 1132012206985, main character 95147667
+2025-09-13 12:48:43,085 - functions - INFO - Fleet members renewed successfully: 1 members
+2025-09-13 12:48:43,086 - functions - INFO - Fleet manager initialized successfully
+2025-09-13 12:49:44,065 - functions - INFO - Fleet members renewed successfully: 1 members
