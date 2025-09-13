@@ -451,6 +451,7 @@ class fleet_manager():
             fleet_ids.append(self.fleet_id)
             access_tokens.append(self.access_token)
         #multi_auto_inv(self.access_token,self.fleet_id,char_dic_list)
+        print(char_dic_list)
         self.thread_pool.starmap(multi_auto_inv,zip(access_tokens,fleet_ids,char_dic_list))
     #kick member
     def fleet_kick(self,char_ids,sleep_time=0.1):
@@ -469,6 +470,7 @@ class fleet_manager():
         return out_dict
     def renew_motd(self):
         self.fleet_motd = get_sso_fleetmotd(self.access_token,self.fleet_id)
+        return self.fleet_motd
     #renew fleet members and record in history
     @handle_errors
     def renew_members(self) -> None:
@@ -585,9 +587,12 @@ class fleet_manager():
         self.fleet_struct_old = self.fleet_struct
         self.fleet_struct = fleet_struct
     #update motd
-    def update_motd(self, text):
+    def update_motd(self, text, append=True):
         self.renew_motd()
-        put_sso_fleet(self.access_token, self.fleet_id, {"motd": self.fleet_motd + text})
+        if append:
+            put_sso_fleet(self.access_token, self.fleet_id, self.fleet_motd + text)
+        else:
+            put_sso_fleet(self.access_token, self.fleet_id, text)
     #get fleet composition
     def get_fleet_composition(self, fleet_members_list, location_match=False, main_char_dic=None):
         """

@@ -3,7 +3,7 @@ EVE Fleet Manager MCP Server - Auto-authorizes fleet on client connection
 """
 
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 from mcp.server.fastmcp import FastMCP
 from functions import fleet_manager
 from static_manage import ShipID_Dict, ShipClass_Dict
@@ -68,12 +68,22 @@ else:
 # MCP Tools
 @mcp.tool()
 def fleet_authorize(force_refresh: bool = False) -> Dict[str, Any]:
-    """Manually re-authorize fleet access"""
+    """Authorize EVE fleet access via SSO tokens. fleet manager connection, validates FC permissions. Use when seeing "Fleet not authorized" errors.
+    
+    Args:
+        force_refresh: Force token refresh even if tokens appear valid
+    Returns:
+        Success status, character name, fleet ID, fleet data, or error details
+    """
     return fleet_authorize_with_retry(force_refresh=force_refresh)
 
 @mcp.tool()
 def get_fleet_status() -> Dict[str, Any]:
-    """Get current fleet status and data"""
+    """Get current fleet status and data.
+    
+    Returns:
+        Fleet authorization status, character info, fleet ID, member count, composition data
+    """
     if fleet_mgr and fleet_status["authorized"]:
         try:
             return {**fleet_status, "fleet_data": fleet_mgr.output_fleet_static(), 
@@ -84,7 +94,11 @@ def get_fleet_status() -> Dict[str, Any]:
 
 @mcp.tool()
 def refresh_fleet_data() -> Dict[str, Any]:
-    """Refresh fleet member data"""
+    """Refresh fleet member data from ESI API. Updates member list, locations, roles, ship types, fleet structure, and historical data. Auto-runs every 60s, use for immediate updates.
+    
+    Returns:
+        Success status, updated fleet data with composition and member count
+    """
     if not fleet_mgr:
         return {"success": False, "error": "Fleet not authorized"}
     
@@ -95,21 +109,221 @@ def refresh_fleet_data() -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+@mcp.tool()
+def organize_fleet_formation(members_per_squad: Optional[int] = 8, location_match: bool = True, number_of_squads: Optional[int] = None) -> Dict[str, Any]:
+    """Organize fleet into tactical formations. Places combat ships in first wing, non-combat in separate wings.
+    
+    Args:
+        members_per_squad: Max members per squad (default 8)
+        location_match: Only organize members in same system as FC
+        number_of_squads: Create exactly this many squads (overrides members_per_squad)
+    Returns:
+        Success status, organization message, updated fleet data, member count
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        fleet_mgr.fleet_formation(
+            members_in_squad=members_per_squad,
+            location_match=location_match,
+            number_of_squads=number_of_squads
+        )
+        return {
+            "success": True, 
+            "message": f"Fleet organized into formations",
+            "fleet_data": fleet_mgr.output_fleet_static(),
+            "members_count": len(fleet_mgr.fleet_members_list)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def invite_to_fleet(ids_or_names: list) -> Dict[str, Any]:
+    """Invite characters to fleet. Accepts character IDs, names, or ['alt'/'account'] for all configured alts.
+    
+    Args:
+        ids_or_names: List of character IDs, names, or ['alt'/'account'] for all alts
+    Returns:
+        Success status, invitation count message, list of invited characters
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    if ids_or_names and (ids_or_names[0].lower() == 'alt' or ids_or_names[0].lower() == 'account'):
+        ids_or_names = fleet_mgr.alts
+
+    char_id_list = []
+    for e_item in ids_or_names:
+        if str(e_item).isdigit():
+            char_id_list.append(int(e_item))
+        else:
+            char_ids = fleet_mgr.char_dict.update_names([str(e_item)])
+            char_id_list.extend(char_ids)
+
+    try:
+        fleet_mgr.fleet_invite(char_id_list)
+        return {
+            "success": True,
+            "message": f"Invited {len(char_id_list)} characters to fleet",
+            "invited_characters": char_id_list
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def kick_from_fleet(ids_or_names: list, sleep_time: float = 0.1) -> Dict[str, Any]:
+    """Remove characters from fleet. Accepts character IDs, names, or ['alt'/'account'] for all alts.
+    
+    Args:
+        ids_or_names: List of character IDs, names, or ['alt'/'account'] for all alts
+        sleep_time: Delay between kicks in seconds (default 0.1s)
+    Returns:
+        Success status, removal count message, list of kicked characters
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    if ids_or_names and (ids_or_names[0].lower() == 'alt' or ids_or_names[0].lower() == 'account'):
+        ids_or_names = fleet_mgr.alts
+
+    char_id_list = []
+    for e_item in ids_or_names:
+        if str(e_item).isdigit():
+            char_id_list.append(int(e_item))
+        else:
+            char_ids = fleet_mgr.char_dict.update_names([str(e_item)])
+            char_id_list.extend(char_ids)
+    
+    try:
+        fleet_mgr.fleet_kick(char_id_list, sleep_time)
+        return {
+            "success": True,
+            "message": f"Kicked {len(char_id_list)} characters from fleet",
+            "kicked_characters": char_id_list
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def update_fleet_motd(text: str, append: bool = True) -> Dict[str, Any]:
+    """Update fleet MOTD by appending text. Preserves existing content. Used for objectives, fittings, comms, loot rules, tactical info, warnings.
+    
+    Args:
+        text: Text to append to current MOTD
+        append: Append text to current MOTD (default True)
+    Returns:
+        Success status, confirmation message, complete updated MOTD
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        fleet_mgr.update_motd(text, append)
+        fleet_mgr.renew_motd()
+        return {
+            "success": True,
+            "message": "Fleet MOTD updated successfully",
+            "new_motd": fleet_mgr.fleet_motd
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def analyze_fleet_composition() -> Dict[str, Any]:
+    """Analyze fleet composition with ship type breakdown. Shows ship distribution, specific hull counts, role categorization.
+    
+    Returns:
+        Success status, detailed ship composition breakdown, total member count
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        composition = fleet_mgr.fleet_members_composition
+        
+        return {
+            "success": True,
+            "composition": composition,
+            "total_members": len(fleet_mgr.fleet_members_list)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def get_fleet_history(limit: int = 5) -> Dict[str, Any]:
+    """Get fleet history and loss tracking. Provides composition snapshots, member patterns, estimated losses.
+    
+    Args:
+        limit: Number of entries to return (default 5, 0 for all)
+    Returns:
+        Success status, fleet history entries, loss history data, record counts
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        history_data = fleet_mgr.fleet_history.get_data()[-limit:] if limit > 0 else fleet_mgr.fleet_history.get_data()
+        loss_history = fleet_mgr.fleet_loss_history.get_data()[-limit:] if limit > 0 else fleet_mgr.fleet_loss_history.get_data()
+        
+        return {
+            "success": True,
+            "fleet_history": history_data,
+            "loss_history": loss_history,
+            "history_count": len(history_data),
+            "loss_count": len(loss_history)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def get_fleet_structure() -> Dict[str, Any]:
+    """Get hierarchical fleet structure (Fleet > Wings > Squads > Members). Shows IDs, names, member assignments, roles, ship types, locations.
+    
+    Returns:
+        Success status, complete fleet structure data, wing count, total squad count
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        return {
+            "success": True,
+            "fleet_structure": fleet_mgr.fleet_struct,
+            "wings_count": len(fleet_mgr.fleet_struct),
+            "total_squads": sum(len(wing.get('squads', [])) for wing in fleet_mgr.fleet_struct)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 # Resources
 @mcp.resource("fleet://status")
 def fleet_status_resource() -> str:
-    """Fleet status resource"""
+    """Real-time EVE fleet status resource. Provides live authorization state, member count, FC info, and composition data without explicit tool calls."""
     return f"Fleet Status: {get_fleet_status()}"
 
 
 # Prompts
 @mcp.prompt()
 def fleet_prompt(action: str = "status") -> str:
-    """Fleet management prompts"""
+    """Fleet management prompts for different operations. Provides specialized guidance for EVE fleet command tasks.
+    
+    Args:
+        action: Operation type (status, formation, invite, kick, analysis, history, structure)
+    """
     prompts = {
-        "status": "Show current fleet status and member composition",
-        "formation": "Organize fleet into optimal squad formations",
-        "invite": "Help invite new members to the fleet",
-        "analysis": "Analyze fleet composition and suggest improvements"
+        "status": "Show current fleet status, member composition, and strength analysis. Get comprehensive fleet overview including authorization, member count, ship composition, operational issues.",
+        
+        "formation": "Organize fleet into optimal squad formations by ship types and location. Analyze member distribution, identify combat ships, restructure wings/squads for tactical effectiveness.",
+        
+        "invite": "Invite new fleet members with proper role assignments. Process character names/IDs, handle alt invitations, manage queues, ensure permissions. Use 'alt' for quick alt management.",
+        
+        "kick": "Remove fleet members efficiently and safely. Identify problematic/inactive members, process removals, manage bulk operations with rate limiting, maintain discipline.",
+        
+        "analysis": "Analyze fleet composition, estimate strength, suggest improvements. Detailed ship type breakdowns, role distributions, tactical capabilities, optimization recommendations.",
+        
+        "history": "Review fleet history, track losses, analyze performance trends. Examine historical data, member participation patterns, estimated losses, operational effectiveness insights.",
+        
+        "structure": "Manage fleet wing and squad structure for optimal organization. Understand current hierarchy, plan structural changes, coordinate command assignments, optimize tactical control."
     }
-    return prompts.get(action, "Help manage EVE Online fleet")
+    return prompts.get(action, "Help manage EVE Online fleet operations. Available: status, formation, invite, kick, analysis, history, structure.")
