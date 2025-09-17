@@ -60,6 +60,20 @@ def fleet_authorize_with_retry(max_retries: int = 3, force_refresh: bool = False
     
     return {"success": False, "error": "Unexpected error"}
 
+def get_fleet_status() -> Dict[str, Any]:
+    """Get current fleet status and data.
+    
+    Returns:
+        Fleet authorization status, character info, fleet ID, member count, composition data
+    """
+    if fleet_mgr and fleet_status["authorized"]:
+        try:
+            return {**fleet_status, "fleet_data": fleet_mgr.output_fleet_static(), 
+                   "members_count": len(fleet_mgr.fleet_members_list)}
+        except Exception as e:
+            return {**fleet_status, "data_error": str(e)}
+    return fleet_status
+
 # Create MCP server and auto-authorize
 mcp = FastMCP("EVE Fleet Manager")
 print("Starting EVE Fleet Manager MCP Server...")
@@ -94,38 +108,6 @@ def fleet_authorize(force_refresh: bool = False) -> Dict[str, Any]:
         Success status, character name, fleet ID, fleet data, or error details
     """
     return fleet_authorize_with_retry(force_refresh=force_refresh)
-
-@mcp.tool()
-def get_fleet_status() -> Dict[str, Any]:
-    """Get current fleet status and data.
-    
-    Returns:
-        Fleet authorization status, character info, fleet ID, member count, composition data
-    """
-    if fleet_mgr and fleet_status["authorized"]:
-        try:
-            return {**fleet_status, "fleet_data": fleet_mgr.output_fleet_static(), 
-                   "members_count": len(fleet_mgr.fleet_members_list)}
-        except Exception as e:
-            return {**fleet_status, "data_error": str(e)}
-    return fleet_status
-
-@mcp.tool()
-def refresh_fleet_data() -> Dict[str, Any]:
-    """Refresh fleet member data from ESI API. Updates member list, locations, roles, ship types, fleet structure, and historical data. Auto-runs every 60s, use for immediate updates.
-    
-    Returns:
-        Success status, updated fleet data with composition and member count
-    """
-    if not fleet_mgr:
-        return {"success": False, "error": "Fleet not authorized"}
-    
-    try:
-        fleet_mgr.renew_members()
-        return {"success": True, "fleet_data": fleet_mgr.output_fleet_static(), 
-               "members_count": len(fleet_mgr.fleet_members_list)}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
 
 @mcp.tool()
 def organize_fleet_formation(members_per_squad: Optional[int] = 8, location_match: bool = True, number_of_squads: Optional[int] = None) -> Dict[str, Any]:
@@ -248,27 +230,6 @@ def update_fleet_motd(text: str, append: bool = True) -> Dict[str, Any]:
         return {"success": False, "error": str(e)}
 
 @mcp.tool()
-def analyze_fleet_composition() -> Dict[str, Any]:
-    """Analyze fleet composition with ship type breakdown. Shows ship distribution, specific hull counts, role categorization.
-    
-    Returns:
-        Success status, detailed ship composition breakdown, total member count
-    """
-    if not fleet_mgr:
-        return {"success": False, "error": "Fleet not authorized"}
-    
-    try:
-        composition = fleet_mgr.fleet_members_composition
-        
-        return {
-            "success": True,
-            "composition": composition,
-            "total_members": len(fleet_mgr.fleet_members_list)
-        }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-@mcp.tool()
 def get_fleet_history(limit: int = 5) -> Dict[str, Any]:
     """Get fleet composition snapshots and member patterns over time.
     
@@ -312,12 +273,41 @@ def get_fleet_losses(limit: int = 5) -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-@mcp.tool()
-def get_fleet_structure() -> Dict[str, Any]:
-    """Get hierarchical fleet structure (Fleet > Wings > Squads > Members). Shows IDs, names, member assignments, roles, ship types, locations.
+# Resources
+@mcp.resource("character://status")
+def character_status_resource() -> str:
+    """Real-time EVE character status resource. Provides live location, ship info, and activity status without explicit tool calls."""
+    if fleet_mgr and fleet_status["authorized"]:
+        return f"Character Status: {fleet_mgr.get_user_info()}"
+    else:
+        return "[ERROR] Character not authorized"
+
+@mcp.resource("fleet://status")
+def fleet_status_resource() -> str:
+    """Real-time EVE fleet status resource. Provides live authorization state, member count, FC info, and composition data without explicit tool calls."""
+    return f"Fleet Status: {get_fleet_status()}"
+
+@mcp.resource("fleet://composition")
+def fleet_composition_resource() -> Dict[str, Any]:
+    """Return fleet composition with ship type breakdown. Shows ship distribution, specific hull counts, role categorization.
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
     
-    Returns:
-        Success status, complete fleet structure data, wing count, total squad count
+    try:
+        composition = fleet_mgr.fleet_members_composition
+        
+        return {
+            "success": True,
+            "composition": composition,
+            "total_members": len(fleet_mgr.fleet_members_list)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.resource("fleet://structure")
+def fleet_structure_resource() -> Dict[str, Any]:
+    """Get hierarchical fleet structure (Fleet > Wings > Squads > Members). Shows IDs, names, member assignments, roles, ship types, locations.
     """
     if not fleet_mgr:
         return {"success": False, "error": "Fleet not authorized"}
@@ -332,23 +322,9 @@ def get_fleet_structure() -> Dict[str, Any]:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-# Resources
-@mcp.resource("fleet://status")
-def fleet_status_resource() -> str:
-    """Real-time EVE fleet status resource. Provides live authorization state, member count, FC info, and composition data without explicit tool calls."""
-    return f"Fleet Status: {get_fleet_status()}"
-
-@mcp.resource("character://status")
-def character_status_resource() -> str:
-    """Real-time EVE character status resource. Provides live location, ship info, and activity status without explicit tool calls."""
-    if fleet_mgr and fleet_status["authorized"]:
-        return f"Character Status: {fleet_mgr.get_user_info()}"
-    else:
-        return "[ERROR] Character not authorized"
-
 @mcp.resource("ship://types")
 def ship_types_resource() -> str:
-    """EVE ship types resource. Provides ship type names."""
+    """Return EVE ship types resource. Provides ship type names."""
     if ship_dict != None:
         return f"Ship Types: {ship_dict.ship_names}"
     else:
@@ -356,7 +332,7 @@ def ship_types_resource() -> str:
     
 @mcp.resource("ship://groups")
 def ship_groups_resource() -> str:
-    """EVE ship groups resource. Provides ship group names."""
+    """Return EVE ship groups resource. Provides ship group names."""
     if ship_dict != None:
         return f"Ship Groups: {ship_dict.class_names}"
     else:
@@ -364,7 +340,7 @@ def ship_groups_resource() -> str:
 
 @mcp.resource("ship://types2groups")
 def ship_types_to_groups_resource() -> str:
-    """EVE ship types to groups resource. Provides dictionary from ship types to group names."""
+    """Return EVE ship types to groups resource. Provides dictionary from ship types to group names."""
     if ship_dict != None:
         return f"Ship Types to Groups Dict: {ship_dict.type_to_groupname(ship_dict.ship_names)}"
     else:
