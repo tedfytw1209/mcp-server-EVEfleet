@@ -95,64 +95,64 @@ class ShipID_Dict():
             self.update_ids(rows)
     #update ids
     def update_ids(self,csv_rows):
-        self.ship_id2name, self.ship_name2id = {},{}
+        self.ship_id2name, self.ship_name2id, self.ship_id2group, self.ship_group2id, self.group_id2name, self.name2group_id = {},{},{},{},{},{}
+        self.group_ids = set()
+        self.type_ids = set()
         col_names = []
         for row in csv_rows:
             if not col_names:
                 col_names = [n for n in row]
             else:
                 type_id = int(row[0])
+                group_id = int(row[1])
                 type_name = row[2]
+                group_name = row[3]
                 self.ship_id2name[type_id] = type_name
                 self.ship_name2id[type_name] = type_id
+                
+                self.ship_id2group[type_id] = group_id
+                self.ship_group2id[group_id] = type_id
+                
+                self.group_id2name[group_id] = group_name
+                self.name2group_id[group_name] = group_id
+                self.group_ids.add(group_id)
+                self.type_ids.add(type_id)
         self.col_names = col_names
         self.ship_names = [n for n in self.ship_name2id.keys()]
         print('Updated ship id list:',len(self.ship_id2name))      
     #call
     def __call__(self, idorname: int|str):
+        #auto transform
+        if isinstance(idorname, int) or idorname.isdigit():
+            idorname = int(idorname)
         #api call if not exist in dict, not good
         if idorname in self.ship_id2name:
             output = self.ship_id2name.get(idorname,None)
         elif idorname in self.ship_name2id:
             output = self.ship_name2id.get(idorname,None)
+        elif idorname in self.group_id2name:
+            output = self.group_id2name.get(idorname,None)
+        elif idorname in self.name2group_id:
+            output = self.name2group_id.get(idorname,None)
         else:
             raise ValueError(f"Ship id/name '{idorname}' not found in dictionary.")
         return output
-    
-#Ship Dict
-class ShipClass_Dict():
-    def __init__(self,
-                 init_file_name='setting/class2ship_list.csv') -> None:
-        with open(init_file_name) as csvfile:
-            rows = csv.reader(csvfile)
-            print('Loading ship class list from',init_file_name)
-            self.update(rows)
-    #update ids
-    def update(self,csv_rows):
-        #id is ship_name, name is class_name
-        self.ship_id2name, self.ship_name2id = {},{}
-        col_names = []
-        for row in csv_rows:
-            if not col_names:
-                col_names = [n for n in row]
-            else:
-                type_id = row[0]
-                type_name = row[1]
-                self.ship_id2name[type_id] = type_name
-                self.ship_name2id[type_name] = type_id
-        self.col_names = col_names
-        self.ship_names = [n for n in self.ship_name2id.keys()]
-        print('Updated ship id list:',len(self.ship_id2name)) 
-    #call
-    def __call__(self, idorname: str):
-        #api call if not exist in dict, not good
-        if idorname in self.ship_id2name:
-            output = self.ship_id2name.get(idorname,None)
-        elif idorname in self.ship_name2id:
-            output = self.ship_name2id.get(idorname,None)
-        else:
-            raise ValueError(f"Ship class '{idorname}' not found in dictionary.")
-        return output
+    #type to group
+    def typeid_to_groupid(self, type_id: int|str):
+        if isinstance(type_id, int) or type_id.isdigit():
+            type_id = int(type_id)
+        return self.ship_id2group.get(type_id,None)
+    #group to type
+    def groupid_to_typeid(self, group_id: int|str):
+        if isinstance(group_id, int) or group_id.isdigit():
+            group_id = int(group_id)
+        return self.ship_group2id.get(group_id,None)
+    #type to group name
+    def type_to_groupname(self, type_id: str):
+        return self.group_id2name.get(self.ship_id2group.get(self.ship_name2id.get(type_id,None),None),None)
+    #group to type name
+    def group_to_typename(self, group_id: str):
+        return self.ship_id2name.get(self.group_id2name.get(self.ship_group2id.get(group_id,None),None),None)
 
 #test main
 if __name__ == '__main__':

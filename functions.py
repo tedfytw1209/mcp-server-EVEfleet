@@ -230,8 +230,7 @@ class fleet_manager():
                  group_ship_ids: List[int] = None,
                  bomb_alt_ids: List[Union[int, str]] = None,
                  auto_update: bool = True,
-                 ship_dict: Optional[ShipID_Dict] = None,
-                 ship_class_dict: Optional[ShipClass_Dict] = None,
+                 ship_dict: Optional[ShipID_Dict] = None
                  ) -> None:
         try:
             # Validate inputs
@@ -254,7 +253,6 @@ class fleet_manager():
             
             # Initialize dictionaries
             self.ship_dict = ship_dict if ship_dict else ShipID_Dict()
-            self.ship_class_dict = ship_class_dict if ship_class_dict else ShipClass_Dict()
             self.char_dict = CharID_Dict()
             
             self.fleet_motd = ''
@@ -265,6 +263,7 @@ class fleet_manager():
             
             # Initialize fleet data
             try:
+                self.user_info = get_char_info(self.main_char_id)
                 self.renew_motd()
                 self.renew_members()
                 
@@ -292,8 +291,70 @@ class fleet_manager():
         while True:
             time.sleep(60)
             self.renew_members()
+    def determine_ship_type_filter(self, ship_type_filter=None):
+        """
+        Determine what ship types to filter based on priority:
+        1. Explicitly mentioned in function args (ship_type_filter)
+        2. Most common ship class in fleet (need >= 50%)
+        
+        Args:
+            ship_type_filter (List[int], optional): Explicitly specified ship type IDs to filter
+            
+        Returns:
+            List[int]: Ship type IDs to use for filtering
+        """
+        # Priority 1: Use explicitly provided ship type filter
+        if ship_type_filter is not None:
+            return ship_type_filter
+        
+        # Priority 2: Find most common ship class (>= 50%)
+        if not self.fleet_members_list:
+            # Fallback to default if no fleet members
+            return self.group_ship_ids
+        
+        # Count ship classes in fleet
+        ship_class_counts = {}
+        total_members = len(self.fleet_members_list)
+        ship_type_to_class_map = {}  # Cache for ship_type_id -> class mapping
+        
+        for member in self.fleet_members_list:
+            ship_type_id = member.get('ship_type_id')
+            if ship_type_id is not None:
+                # Get ship class for this ship type
+                try:
+                    # Convert ship_type_id to ship_class using ship_class_dict
+                    ship_class_id = self.ship_dict.typeid_to_groupid(ship_type_id)
+                    if ship_class_id:
+                        ship_type_to_class_map[ship_type_id] = ship_class_id
+                        ship_class_counts[ship_class_id] = ship_class_counts.get(ship_class_id, 0) + 1
+                except (ValueError, KeyError) as e:
+                    # Skip ships that can't be mapped to classes
+                    print(f"Warning: Could not map ship_type_id {ship_type_id} to class: {e}")
+                    continue
+        print(ship_class_counts)
+        # Find ship classes that make up >= 50% of the fleet
+        threshold = total_members * 0.5
+        dominant_ship_classes = []
+        
+        for ship_class_id, count in ship_class_counts.items():
+            if count >= threshold:
+                dominant_ship_classes.append(ship_class_id)
+        
+        # Convert dominant ship classes back to ship type IDs
+        if dominant_ship_classes:
+            dominant_ship_types = []
+            for ship_type_id, ship_class_id in ship_type_to_class_map.items():
+                if ship_class_id in dominant_ship_classes:
+                    dominant_ship_types.append(ship_type_id)
+            
+            print(f"Found dominant ship class(es): {dominant_ship_classes}")
+            return dominant_ship_types
+        else:
+            print("No dominant ship class found (>=50%), using default ship types")
+            return self.group_ship_ids
+
     #divide/move member !!need rewrite
-    def fleet_formation(self, members_in_squad=8, location_match=True, number_of_squads=None):
+    def fleet_formation(self, members_in_squad=8, location_match=True, number_of_squads=None, ship_type_filter=None):
         """
         Organize fleet members into squads and wings
         
@@ -302,6 +363,8 @@ class fleet_manager():
             location_match (bool): Only include members in same system as main character
             number_of_squads (int, optional): Specific number of squads to create. If provided, 
                                             overrides members_in_squad calculation
+            ship_type_filter (List[int], optional): Specific ship type IDs to filter. If not provided,
+                                                  will use most common ship type (>=50%) or default
         """
         members_in_squad = int(members_in_squad)
         self.renew_members() #get lastest info
@@ -309,13 +372,18 @@ class fleet_manager():
         members_count = len(self.fleet_members_list)
         wings_count = len(self.fleet_struct)
         move_dictlist = []
+        
+        # Determine which ship types to filter
+        target_ship_ids = self.determine_ship_type_filter(ship_type_filter)
+        print(f'Using ship type filter: {target_ship_ids}')
+        
         #count useful member
         final_sq_counts = defaultdict(list)
         useful_members = []
         other_members = []
         for member in self.fleet_members_list:
             location_same = not location_match or member['solar_system_id']==self.main_char_dic['solar_system_id']
-            if member['ship_type_id'] in self.group_ship_ids and location_same:
+            if member['ship_type_id'] in target_ship_ids and location_same:
                 useful_members.append(member)
                 final_sq_counts[member['squad_id']].append(member)
             else:
@@ -451,7 +519,6 @@ class fleet_manager():
             fleet_ids.append(self.fleet_id)
             access_tokens.append(self.access_token)
         #multi_auto_inv(self.access_token,self.fleet_id,char_dic_list)
-        print(char_dic_list)
         self.thread_pool.starmap(multi_auto_inv,zip(access_tokens,fleet_ids,char_dic_list))
     #kick member
     def fleet_kick(self,char_ids,sleep_time=0.1):
@@ -463,6 +530,7 @@ class fleet_manager():
     #output fleet static
     def output_fleet_static(self):
         out_dict = {
+            "composition_class": self.fleet_members_composition_class,
             "composition": self.fleet_members_composition,
             "motd": self.fleet_motd,
             "fleet_id": self.fleet_id,
@@ -508,6 +576,7 @@ class fleet_manager():
             # Update fleet data
             self.fleet_members_list = fleet_members_list
             self.fleet_members_composition = self.get_fleet_composition(fleet_members_list)
+            self.fleet_members_composition_class = self.get_fleet_composition_class(fleet_members_list)
             
             # Create history entry
             history_each = {
@@ -586,6 +655,13 @@ class fleet_manager():
         #self update
         self.fleet_struct_old = self.fleet_struct
         self.fleet_struct = fleet_struct
+    #warp time
+    def get_warp_time(self,speed, warp_dist, ess_count=None, subwarp=200):
+        warp_t, ess_t = get_warp_time(speed,warp_dist,ess_count,subwarp)
+        return warp_t
+    #dscan
+    def analze_dscan(self, ship_dict: ShipID_Dict | None = None):
+        return analze_dscan(ship_dict)
     #update motd
     def update_motd(self, text, append=True):
         self.renew_motd()
@@ -608,6 +684,15 @@ class fleet_manager():
             ship_name = self.ship_dict(ship_type_id)
             ship_count[ship_name] = ship_count.get(ship_name, 0) + 1
         return ship_count
+    #get fleet composition class
+    def get_fleet_composition_class(self, fleet_members_list):
+        class_count = {}
+        for member in fleet_members_list:
+            ship_type_id = member['ship_type_id']
+            ship_name = self.ship_dict(ship_type_id)
+            class_name = self.ship_dict.type_to_groupname(ship_name)
+            class_count[class_name] = class_count.get(class_name, 0) + 1
+        return class_count
     #estimate fleet loss
     def _estimate_fleet_loss(self, location_match=False):
         if len(self.fleet_history) < 2:
