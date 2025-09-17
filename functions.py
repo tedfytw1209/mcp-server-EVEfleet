@@ -11,7 +11,7 @@ from collections import defaultdict
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import Optional, Dict, List, Tuple, Any, Union
 from functools import wraps
-
+from IO.API_IO import get_char_info
 from IO.fleet_api import (put_sso_invitation,
                           put_sso_move,
                           get_sso_fleetmotd,
@@ -655,13 +655,6 @@ class fleet_manager():
         #self update
         self.fleet_struct_old = self.fleet_struct
         self.fleet_struct = fleet_struct
-    #warp time
-    def get_warp_time(self,speed, warp_dist, ess_count=None, subwarp=200):
-        warp_t, ess_t = get_warp_time(speed,warp_dist,ess_count,subwarp)
-        return warp_t
-    #dscan
-    def analze_dscan(self, ship_dict: ShipID_Dict | None = None):
-        return analze_dscan(ship_dict)
     #update motd
     def update_motd(self, text, append=True):
         self.renew_motd()
