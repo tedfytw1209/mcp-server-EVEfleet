@@ -2,6 +2,7 @@
 Code for EVE API management char/location/UI
 """
 #import
+from collections import defaultdict
 from pathlib import Path
 import csv
 import yaml
@@ -95,7 +96,8 @@ class ShipID_Dict():
             self.update_ids(rows)
     #update ids
     def update_ids(self,csv_rows):
-        self.ship_id2name, self.ship_name2id, self.ship_id2group, self.ship_group2id, self.group_id2name, self.name2group_id = {},{},{},{},{},{}
+        self.ship_id2name, self.ship_name2id, self.ship_id2group, self.ship_name2group, self.group_id2name, self.name2group_id = {},{},{},{},{},{}
+        self.group_id2ship = defaultdict(list)
         self.group_ids = set()
         self.type_ids = set()
         col_names = []
@@ -108,17 +110,19 @@ class ShipID_Dict():
                 type_name = row[2]
                 group_name = row[3]
                 self.ship_id2name[type_id] = type_name
-                self.ship_name2id[type_name] = type_id
+                self.ship_name2id[type_name.lower()] = type_id
                 
                 self.ship_id2group[type_id] = group_id
-                self.ship_group2id[group_id] = type_id
-                
+                self.ship_name2group[type_name.lower()] = group_name.lower()
+                self.group_id2ship[group_id].append(type_id)
+
                 self.group_id2name[group_id] = group_name
-                self.name2group_id[group_name] = group_id
+                self.name2group_id[group_name.lower()] = group_id
                 self.group_ids.add(group_id)
                 self.type_ids.add(type_id)
         self.col_names = col_names
         self.ship_names = [n for n in self.ship_name2id.keys()]
+        self.class_names = [n for n in self.group_id2ship.keys()]
         print('Updated ship id list:',len(self.ship_id2name))      
     #call
     def __call__(self, idorname: int|str):
@@ -128,12 +132,12 @@ class ShipID_Dict():
         #api call if not exist in dict, not good
         if idorname in self.ship_id2name:
             output = self.ship_id2name.get(idorname,None)
-        elif idorname in self.ship_name2id:
-            output = self.ship_name2id.get(idorname,None)
+        elif isinstance(idorname, str) and idorname.lower() in self.ship_name2id:
+            output = self.ship_name2id.get(idorname.lower(),None)
         elif idorname in self.group_id2name:
             output = self.group_id2name.get(idorname,None)
-        elif idorname in self.name2group_id:
-            output = self.name2group_id.get(idorname,None)
+        elif isinstance(idorname, str) and idorname.lower() in self.name2group_id:
+            output = self.name2group_id.get(idorname.lower(),None)
         else:
             raise ValueError(f"Ship id/name '{idorname}' not found in dictionary.")
         return output
@@ -143,16 +147,18 @@ class ShipID_Dict():
             type_id = int(type_id)
         return self.ship_id2group.get(type_id,None)
     #group to type
-    def groupid_to_typeid(self, group_id: int|str):
+    def groupid_to_typeids(self, group_id: int|str):
         if isinstance(group_id, int) or group_id.isdigit():
             group_id = int(group_id)
-        return self.ship_group2id.get(group_id,None)
+        return self.group_id2ship.get(group_id,[])
     #type to group name
-    def type_to_groupname(self, type_id: str):
-        return self.group_id2name.get(self.ship_id2group.get(self.ship_name2id.get(type_id,None),None),None)
+    def type_to_groupname(self, type_name: str):
+        # Convert to lowercase for lookup, then capitalize first letter of result
+        result = self.ship_name2group.get(type_name.lower(), None)
+        return result.capitalize() if result else None
     #group to type name
-    def group_to_typename(self, group_id: str):
-        return self.ship_id2name.get(self.group_id2name.get(self.ship_group2id.get(group_id,None),None),None)
+    def group_to_typenames(self, group_name: str):
+        return [self.ship_id2name[n] for n in self.group_id2ship.get(self.name2group_id.get(group_name.lower(),None),[])]
 
 #test main
 if __name__ == '__main__':

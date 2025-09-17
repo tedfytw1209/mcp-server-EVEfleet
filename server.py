@@ -6,32 +6,37 @@ import time
 from typing import Optional, Dict, Any, Union
 from mcp.server.fastmcp import FastMCP
 from functions import fleet_manager
-from static_manage import ShipID_Dict, ShipClass_Dict
+from static_manage import ShipID_Dict, Static_Dict
 from config_load import CONFIG
 from IO.API_IO import get_refresh_token
 from IO.fleet_api import get_sso_fleetid
 
 # Global state
 fleet_mgr: Optional[fleet_manager] = None
+ship_dict: Optional[ShipID_Dict] = None
+system_dict: Optional[Static_Dict] = None
 fleet_status = {"authorized": False, "error": None, "character": None, "fleet_id": None}
 
+## functions
 def fleet_authorize_with_retry(max_retries: int = 3, force_refresh: bool = False) -> Dict[str, Any]:
     """Auto-authorize fleet with retry logic"""
-    global fleet_mgr, fleet_status
+    global fleet_mgr, fleet_status, ship_dict, system_dict
     
     for attempt in range(max_retries):
         try:
             print(f"Fleet authorization attempt {attempt + 1}/{max_retries}")
             
+            system_dict = Static_Dict('setting/system_dict.yaml','systems','solar_system')
+            ship_dict = ShipID_Dict()
             # Get tokens and initialize
-            ship_dict, ship_class_dict = ShipID_Dict(), ShipClass_Dict()
             _, access_token, character_id, character_name = get_refresh_token("refresh_token.txt", force_refresh)
             
             # Create fleet manager
             fleet_id = get_sso_fleetid(access_token, character_id, character_name)
             fleet_mgr = fleet_manager(access_token, fleet_id, character_id, 
                                     bomb_alt_ids=CONFIG.get('ALT_IDS', []), 
-                                    ship_dict=ship_dict, ship_class_dict=ship_class_dict)
+                                    ship_dict=ship_dict,
+                                    system_dict=system_dict)
             
             # Update status
             fleet_status.update({
@@ -65,7 +70,20 @@ if startup_result["success"]:
 else:
     print(f"[ERROR] Started with authorization error: {startup_result['error']}")
 
-# MCP Tools
+## MCP Tools
+# ship dict function
+@mcp.tool()
+def ship_type2group(type_name: str) -> str:
+    """Convert EVE ship type name to ship group name (e.g., "Rifter" -> "Assault Frigate").
+
+    Args:
+        type_name (str): Ship type name to convert
+
+    Returns:
+        str: Ship group name or None if not found
+    """
+    return ship_dict.type_to_groupname(type_name)
+# fleet function
 @mcp.tool()
 def fleet_authorize(force_refresh: bool = False) -> Dict[str, Any]:
     """Authorize EVE fleet access via SSO tokens. fleet manager connection, validates FC permissions. Use when seeing "Fleet not authorized" errors.
@@ -252,25 +270,43 @@ def analyze_fleet_composition() -> Dict[str, Any]:
 
 @mcp.tool()
 def get_fleet_history(limit: int = 5) -> Dict[str, Any]:
-    """Get fleet history and loss tracking. Provides composition snapshots, member patterns, estimated losses.
+    """Get fleet composition snapshots and member patterns over time.
     
     Args:
         limit: Number of entries to return (default 5, 0 for all)
     Returns:
-        Success status, fleet history entries, loss history data, record counts
+        Success status, fleet history entries, record count
     """
     if not fleet_mgr:
         return {"success": False, "error": "Fleet not authorized"}
     
     try:
         history_data = fleet_mgr.fleet_history.get_data()[-limit:] if limit > 0 else fleet_mgr.fleet_history.get_data()
-        loss_history = fleet_mgr.fleet_loss_history.get_data()[-limit:] if limit > 0 else fleet_mgr.fleet_loss_history.get_data()
-        
         return {
             "success": True,
             "fleet_history": history_data,
+            "history_count": len(history_data)
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+@mcp.tool()
+def get_fleet_losses(limit: int = 5) -> Dict[str, Any]:
+    """Get estimated fleet losses based on member count changes.
+    
+    Args:
+        limit: Number of entries to return (default 5, 0 for all)
+    Returns:
+        Success status, loss history data, record count
+    """
+    if not fleet_mgr:
+        return {"success": False, "error": "Fleet not authorized"}
+    
+    try:
+        loss_history = fleet_mgr.fleet_loss_history.get_data()[-limit:] if limit > 0 else fleet_mgr.fleet_loss_history.get_data()
+        return {
+            "success": True,
             "loss_history": loss_history,
-            "history_count": len(history_data),
             "loss_count": len(loss_history)
         }
     except Exception as e:
@@ -302,6 +338,37 @@ def fleet_status_resource() -> str:
     """Real-time EVE fleet status resource. Provides live authorization state, member count, FC info, and composition data without explicit tool calls."""
     return f"Fleet Status: {get_fleet_status()}"
 
+@mcp.resource("character://status")
+def character_status_resource() -> str:
+    """Real-time EVE character status resource. Provides live location, ship info, and activity status without explicit tool calls."""
+    if fleet_mgr and fleet_status["authorized"]:
+        return f"Character Status: {fleet_mgr.get_user_info()}"
+    else:
+        return "[ERROR] Character not authorized"
+
+@mcp.resource("ship://types")
+def ship_types_resource() -> str:
+    """EVE ship types resource. Provides ship type names."""
+    if ship_dict != None:
+        return f"Ship Types: {ship_dict.ship_names}"
+    else:
+        return "[ERROR] Character not authorized"
+    
+@mcp.resource("ship://groups")
+def ship_groups_resource() -> str:
+    """EVE ship groups resource. Provides ship group names."""
+    if ship_dict != None:
+        return f"Ship Groups: {ship_dict.class_names}"
+    else:
+        return "[ERROR] Character not authorized"
+
+@mcp.resource("ship://types2groups")
+def ship_types_to_groups_resource() -> str:
+    """EVE ship types to groups resource. Provides dictionary from ship types to group names."""
+    if ship_dict != None:
+        return f"Ship Types to Groups Dict: {ship_dict.type_to_groupname(ship_dict.ship_names)}"
+    else:
+        return "[ERROR] Character not authorized"
 
 # Prompts
 @mcp.prompt()

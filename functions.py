@@ -22,7 +22,7 @@ from IO.fleet_api import (put_sso_invitation,
                           del_sso_kick,
                           put_sso_fleet,
                           )
-from static_manage import CharID_Dict,Static_Dict,ShipID_Dict, ShipClass_Dict
+from static_manage import CharID_Dict,ShipID_Dict,Static_Dict
 
 class loop_memory:
     def __init__(self, max_size=10):
@@ -230,7 +230,8 @@ class fleet_manager():
                  group_ship_ids: List[int] = None,
                  bomb_alt_ids: List[Union[int, str]] = None,
                  auto_update: bool = True,
-                 ship_dict: Optional[ShipID_Dict] = None
+                 ship_dict: Optional[ShipID_Dict] = None,
+                 system_dict: Optional[Static_Dict] = None
                  ) -> None:
         try:
             # Validate inputs
@@ -254,6 +255,7 @@ class fleet_manager():
             # Initialize dictionaries
             self.ship_dict = ship_dict if ship_dict else ShipID_Dict()
             self.char_dict = CharID_Dict()
+            self.system_dict = system_dict if system_dict else Static_Dict('setting/system_dict.yaml','systems','solar_system')
             
             self.fleet_motd = ''
             self.auto_update = auto_update
@@ -705,7 +707,9 @@ class fleet_manager():
         own_loss = {k: round((member_prev.get(k, 0) - member_now.get(k, 0)) / minute_diff, 2)
                     for k in member_prev if member_prev.get(k, 0) > member_now.get(k, 0)}
         return own_loss
-
+    #get user info
+    def get_user_info(self):
+        return self.user_info
     
 if __name__ == "__main__":
     pass
