@@ -10,3 +10,4 @@ wheels/
 .venv
 refresh_token.txt
 fleet_support.log
+mcp-publisher.exe

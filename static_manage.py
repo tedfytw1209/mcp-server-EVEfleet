@@ -156,6 +156,11 @@ class ShipID_Dict():
         # Convert to lowercase for lookup, then capitalize first letter of result
         result = self.ship_name2group.get(type_name.lower(), None)
         return result.capitalize() if result else None
+    #types to group name
+    def type_to_groupnames(self, type_names: list[str]):
+        # Convert to lowercase for lookup, then capitalize first letter of result
+        results = [self.ship_name2group.get(name.lower(), None) for name in type_names]
+        return [result.capitalize() for result in results if result]
     #group to type name
     def group_to_typenames(self, group_name: str):
         return [self.ship_id2name[n] for n in self.group_id2ship.get(self.name2group_id.get(group_name.lower(),None),[])]

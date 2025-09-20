@@ -194,7 +194,7 @@ def kick_from_fleet(ids_or_names: list, sleep_time: float = 0.1) -> Dict[str, An
         else:
             char_ids = fleet_mgr.char_dict.update_names([str(e_item)])
             char_id_list.extend(char_ids)
-    
+    print(f"Preparing to kick characters: {char_id_list}")
     try:
         fleet_mgr.fleet_kick(char_id_list, sleep_time)
         return {
@@ -341,8 +341,9 @@ def ship_groups_resource() -> str:
 @mcp.resource("ship://types2groups")
 def ship_types_to_groups_resource() -> str:
     """Return EVE ship types to groups resource. Provides dictionary from ship types to group names."""
+    gp_dict = {name: group for name, group in zip(ship_dict.ship_names, ship_dict.type_to_groupnames(ship_dict.ship_names))}
     if ship_dict != None:
-        return f"Ship Types to Groups Dict: {ship_dict.type_to_groupname(ship_dict.ship_names)}"
+        return f"Ship Types to Groups Dict: {gp_dict}"
     else:
         return "[ERROR] Character not authorized"
 
