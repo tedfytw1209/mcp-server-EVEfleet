@@ -50,3 +50,7 @@ mcp-name: io.github.tedfytw1209/mcp-server-EVEfleet
   - `pip install -e .` or `uv pip install -e .`
 - Packaged data includes `config.yaml` and `setting/*`. The token file is not packaged and is created at runtime.
 
+### MCP Test
+```cmd
+uv run mcp dev ./src/mcp_server_evefleet/server.py
+```
