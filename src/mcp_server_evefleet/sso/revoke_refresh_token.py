@@ -41,9 +41,6 @@ def revoke_refresh_token(refresh_token, client_id, secret_key):
     try:
         revocation_endpoint = sso_meta["revocation_endpoint"]
     except KeyError:
-        print("The sso meta endpoint did not include the expected key "
-              "revocation_endpoint. \nSSO meta info received is: "
-              "{}".format(sso_meta))
         sys.exit(1)
 
     form_values = {
@@ -57,13 +54,8 @@ def revoke_refresh_token(refresh_token, client_id, secret_key):
         auth=(client_id, secret_key)
     )
 
-    print("Made a request to {} with body: {} using basic "
-          "authentication".format(revocation_endpoint, res.request.body))
 
     if res.status_code != 200:
-        print("Something went wrong with the request to revoke your token. "
-              "\nThe status code from EVE SSO is {} \nThe response body "
-              "is {}".format(res.status_code, res.json()))
         sys.exit(1)
 
     return res.status_code
@@ -82,9 +74,6 @@ def main():
         client_id,
         secret_key
     )
-
-    if revoke_status_code == 200:
-        print("Success! Your token has been revoked!")
 
 
 if __name__ == "__main__":

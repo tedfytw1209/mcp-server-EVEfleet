@@ -84,7 +84,6 @@ def start_callback_server(port=8080, timeout=300):
     server = HTTPServer(('localhost', port), CallbackHandler)
     server.timeout = timeout
     
-    print(f"Starting callback server on port {port}...")
     
     # Start server in a separate thread
     server_thread = threading.Thread(target=server.serve_forever)
@@ -156,7 +155,6 @@ def get_refresh_token(file_name: str | None = None, reset: bool = False, use_bro
     cwd_token = Path('refresh_token.txt')
     if not token_path.exists() and cwd_token.exists() and not reset:
         token_path = cwd_token
-    print(f"Token path: {token_path}")
 
     if not token_path.is_file() or reset:
         random = base64.urlsafe_b64encode(secrets.token_bytes(32))
@@ -170,7 +168,6 @@ def get_refresh_token(file_name: str | None = None, reset: bool = False, use_bro
         if use_browser and SSO_callback.startswith("http://localhost"):
             # Browser-based authentication with localhost callback server
             try:
-                print("Starting browser-based authentication with local server...")
                 
                 # Start callback server
                 server, server_thread = start_callback_server()
@@ -178,56 +175,38 @@ def get_refresh_token(file_name: str | None = None, reset: bool = False, use_bro
                 # Generate auth URL with local callback
                 auth_url = get_auth_url_with_callback(client_id, code_challenge, SSO_callback)
                 
-                print(f"\nOpening browser for EVE SSO authentication...")
-                print(f"URL: {auth_url}")
                 
                 # Open browser
                 webbrowser.open(auth_url)
                 
                 # Wait for callback
-                print("Waiting for authentication callback...")
                 auth_code = wait_for_callback(server)
                 
-                print("Authentication successful! Processing token...")
                 
             except Exception as e:
-                print(f"Browser authentication failed: {e}")
-                print("Falling back to manual authentication...")
                 use_browser = False
         elif use_browser and SSO_callback.startswith("eveauth://"):
             # Custom scheme authentication (recommended by CCP)
             try:
-                print("Using EVE custom scheme authentication...")
                 
                 # Generate auth URL with custom scheme
                 auth_url = get_auth_url_with_callback(client_id, code_challenge, SSO_callback)
                 
-                print(f"\nOpening browser for EVE SSO authentication...")
-                print(f"URL: {auth_url}")
-                print("\nAfter authentication, EVE will try to open your application with the auth code.")
-                print("If your system doesn't handle eveauth:// URLs automatically, you'll need to copy the code manually.")
                 
                 # Open browser
                 webbrowser.open(auth_url)
                 
                 # For custom schemes, we need manual input as fallback
-                print("\nIf the authentication didn't complete automatically, please:")
-                print("1. Look for an eveauth:// URL in your browser or system notifications")
-                print("2. Copy the 'code' parameter from that URL")
                 auth_code = input("Enter the authorization code here (or press Enter if it was handled automatically): ").strip()
                 
                 # If no code was entered, we might need to implement custom scheme handling
                 if not auth_code:
-                    print("No code provided. You may need to set up eveauth:// URL handling on your system.")
                     use_browser = False
                 
             except Exception as e:
-                print(f"Custom scheme authentication failed: {e}")
-                print("Falling back to manual authentication...")
                 use_browser = False
         elif use_browser:
             # For other callback types, use manual authentication
-            print("Using manual authentication for configured callback URL...")
             use_browser = False
         
         if not use_browser:
@@ -257,8 +236,6 @@ def get_refresh_token(file_name: str | None = None, reset: bool = False, use_bro
             res = send_token_request(form_values)
             refresh_token, access_token, character_id, character_name = handle_sso_token_response_token(res)
         except Exception as e:
-            print(f"Token refresh failed: {e}")
-            print("Please try again")
             return get_refresh_token(str(token_path), reset=True, use_browser=use_browser)
 
     # Persist token to a proper path
@@ -272,7 +249,7 @@ def get_refresh_token(file_name: str | None = None, reset: bool = False, use_bro
         with final_path.open('w', encoding='utf-8') as f:
             f.write(refresh_token)
     except Exception as e:
-        print(f"Warning: failed to write refresh token to {final_path}: {e}")
+        pass
     character_id = int(character_id)
     return refresh_token, access_token, character_id, character_name
 
@@ -349,7 +326,6 @@ def post_name2id(names_list):
     }
     '''
     sso_path = ("https://esi.evetech.net/latest/universe/ids/?datasource=tranquility&language=en")
-    print(names_list)
     res = requests.post(sso_path, json=names_list)
     res.raise_for_status()
     data = res.json()

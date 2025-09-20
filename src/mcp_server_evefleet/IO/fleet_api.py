@@ -31,8 +31,6 @@ def get_sso_fleetid(access_token, character_id, character_name = None):
     res.raise_for_status()
 
     data = res.json()
-    if character_name:
-        print("\n{} has {} fleet".format(character_name, data))
     fleet_id = data['fleet_id']
     return fleet_id
 #get fleet members
@@ -106,8 +104,6 @@ def get_sso_fleetmotd(access_token, fleet_id, character_name=None):
     res.raise_for_status()
 
     data = res.json()
-    if character_name:
-        print("\n{} has {} fleet".format(character_name, data))
     fleet_motd = data['motd']
     return fleet_motd
 

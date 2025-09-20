@@ -107,13 +107,11 @@ class ShipID_Dict():
         if init_path.exists():
             with open(init_path) as csvfile:
                 rows = csv.reader(csvfile)
-                print('Loading ship id list from',init_file_name)
                 self.update_ids(rows)
         else:
             # Fallback: load from packaged resource
             with resources.files('mcp_server_evefleet').joinpath(init_file_name).open('r') as csvfile:
                 rows = csv.reader(csvfile)
-                print('Loading ship id list from packaged resource',init_file_name)
                 self.update_ids(rows)
     #update ids
     def update_ids(self,csv_rows):
@@ -143,8 +141,7 @@ class ShipID_Dict():
                 self.type_ids.add(type_id)
         self.col_names = col_names
         self.ship_names = [n for n in self.ship_name2id.keys()]
-        self.class_names = [n for n in self.group_id2ship.keys()]
-        print('Updated ship id list:',len(self.ship_id2name))      
+        self.class_names = [n for n in self.group_id2ship.keys()] 
     #call
     def __call__(self, idorname: int|str):
         #auto transform

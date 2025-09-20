@@ -74,17 +74,11 @@ def main():
     try:
         token_contents = validate_eve_jwt(token)
     except ExpiredSignatureError:
-        print("The JWT token has expired")
         sys.exit(1)
     except JWTError as e:
-        print(f"The JWT token was invalid: {e}")
         sys.exit(1)
     except RuntimeError as e:
-        print(str(e))
         sys.exit(1)
-    else:
-        print(f"\nThe contents of the access token are:\n{token_contents}")
-
 
 if __name__ == "__main__":
     main()

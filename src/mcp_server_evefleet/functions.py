@@ -331,9 +331,7 @@ class fleet_manager():
                         ship_class_counts[ship_class_id] = ship_class_counts.get(ship_class_id, 0) + 1
                 except (ValueError, KeyError) as e:
                     # Skip ships that can't be mapped to classes
-                    print(f"Warning: Could not map ship_type_id {ship_type_id} to class: {e}")
                     continue
-        print(ship_class_counts)
         # Find ship classes that make up >= 50% of the fleet
         threshold = total_members * 0.5
         dominant_ship_classes = []
@@ -349,10 +347,8 @@ class fleet_manager():
                 if ship_class_id in dominant_ship_classes:
                     dominant_ship_types.append(ship_type_id)
             
-            print(f"Found dominant ship class(es): {dominant_ship_classes}")
             return dominant_ship_types
         else:
-            print("No dominant ship class found (>=50%), using default ship types")
             return self.group_ship_ids
 
     #divide/move member !!need rewrite
@@ -370,14 +366,12 @@ class fleet_manager():
         """
         members_in_squad = int(members_in_squad)
         self.renew_members() #get lastest info
-        print(self.fleet_struct)
         members_count = len(self.fleet_members_list)
         wings_count = len(self.fleet_struct)
         move_dictlist = []
         
         # Determine which ship types to filter
         target_ship_ids = self.determine_ship_type_filter(ship_type_filter)
-        print(f'Using ship type filter: {target_ship_ids}')
         
         #count useful member
         final_sq_counts = defaultdict(list)
@@ -390,15 +384,12 @@ class fleet_manager():
                 final_sq_counts[member['squad_id']].append(member)
             else:
                 other_members.append(member)
-        print('Useful members count: ', len(useful_members))
         
         # Calculate required squads based on either number_of_squads or members_in_squad
         if number_of_squads is not None:
             req_squads = int(number_of_squads)
-            print(f'Using specified number of squads: {req_squads}')
         else:
             req_squads = int(len(useful_members) / members_in_squad + 0.999)
-            print(f'Calculated squads needed: {req_squads} (based on {members_in_squad} members per squad)')
         ### put all useful members in first wing / different squad , other in other wings
         #create wing/squad if need
         if wings_count <2:
@@ -426,8 +417,6 @@ class fleet_manager():
             new_sq_dic = {'id': new_sq_id, 'name': '', 'members':[]}
             other_wing['squads'].append(new_sq_dic)
         
-        print(useful_members)
-        print(other_members)
         #gen move dict for useful member
         final_sq_ids = []
         count = 0
@@ -436,7 +425,6 @@ class fleet_manager():
             count += 1
             if count>=req_squads:
                 break
-        print(final_sq_ids)
         
         # Initialize final_sq_counts for all target squads
         for sq_id in final_sq_ids:
@@ -448,9 +436,6 @@ class fleet_manager():
             # Even distribution across specified number of squads
             members_per_squad = len(useful_members) // req_squads
             extra_members = len(useful_members) % req_squads
-            
-            print(f'Distributing {len(useful_members)} members across {req_squads} squads')
-            print(f'Base members per squad: {members_per_squad}, Extra members: {extra_members}')
             
             # Clear existing distribution and redistribute evenly
             final_sq_counts = {sq_id: [] for sq_id in final_sq_ids}
@@ -500,11 +485,9 @@ class fleet_manager():
             if mem['wing_id']==first_wing_dic['id']:
                 new_dic = {'character_id': mem['character_id'], 'squad_id': other_wing['squads'][0]['id'], 'wing_id': other_wing['id']}
                 move_dictlist.append(new_dic)
-        print(move_dictlist)
         #move member
         move_chars = []
         for e_dic in move_dictlist:
-            print('Perform move of char: ', e_dic['character_id'])
             #put_sso_move(self.access_token,self.fleet_id,**e_dic)
             move_chars.append((self.access_token,self.fleet_id,e_dic['character_id'],e_dic.get('role','squad_member'),e_dic.get('squad_id',None),e_dic.get('wing_id',None)))
         self.thread_pool.starmap(put_sso_move,move_chars)

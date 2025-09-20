@@ -36,10 +36,6 @@ def print_auth_url(client_id, code_challenge=None, redirect_uri="https://www.goo
     string_params = urllib.parse.urlencode(params)
     full_auth_url = "{}?{}".format(base_auth_url, string_params)
 
-    print("\nOpen the following link in your browser:\n\n {} \n\n Once you "
-          "have logged in as a character you will get redirected to "
-          "{}.".format(full_auth_url, redirect_uri))
-
 
 def send_token_request(form_values, add_headers={}):
     """Sends a request for an authorization token to the EVE SSO.
@@ -85,7 +81,6 @@ def handle_sso_token_response(sso_response):
         data = sso_response.json()
         access_token = data["access_token"]
 
-        print("\nVerifying access token JWT...")
 
         jwt = validate_eve_jwt(access_token)
         character_id = jwt["sub"].split(":")[2]
@@ -93,9 +88,6 @@ def handle_sso_token_response(sso_response):
         blueprint_path = ("https://esi.evetech.net/latest/characters/{}/"
                           "blueprints/".format(character_id))
 
-        print("\nSuccess! Here is the payload received from the EVE SSO: {}"
-              "\nYou can use the access_token to make an authenticated "
-              "request to {}".format(data, blueprint_path))
 
         input("\nPress any key to have this program make the request for you:")
 
@@ -104,23 +96,9 @@ def handle_sso_token_response(sso_response):
         }
 
         res = requests.get(blueprint_path, headers=headers)
-        print("\nMade request to {} with headers: "
-              "{}".format(blueprint_path, res.request.headers))
         res.raise_for_status()
 
         data = res.json()
-        print("\n{} has {} blueprints".format(character_name, len(data)))
-    else:
-        print("\nSomething went wrong! Re read the comment at the top of this "
-              "file and make sure you completed all the prerequisites then "
-              "try again. Here's some debug info to help you out:")
-        print("\nSent request with url: {} \nbody: {} \nheaders: {}".format(
-            sso_response.request.url,
-            sso_response.request.body,
-            sso_response.request.headers
-        ))
-        print("\nSSO response code is: {}".format(sso_response.status_code))
-        print("\nSSO response JSON is: {}".format(sso_response.json()))
 
 #handle_sso_response_token
 def handle_sso_token_response_token(sso_response):
@@ -135,19 +113,7 @@ def handle_sso_token_response_token(sso_response):
         data = sso_response.json()
         access_token = data["access_token"]
         refresh_token = data['refresh_token']
-        print("\nVerifying access token JWT...")
         jwt = validate_eve_jwt(access_token)
         character_id = jwt["sub"].split(":")[2]
         character_name = jwt["name"]
-    else:
-        print("\nSomething went wrong! Re read the comment at the top of this "
-              "file and make sure you completed all the prerequisites then "
-              "try again. Here's some debug info to help you out:")
-        print("\nSent request with url: {} \nbody: {} \nheaders: {}".format(
-            sso_response.request.url,
-            sso_response.request.body,
-            sso_response.request.headers
-        ))
-        print("\nSSO response code is: {}".format(sso_response.status_code))
-        print("\nSSO response JSON is: {}".format(sso_response.json()))
     return refresh_token, access_token, character_id, character_name

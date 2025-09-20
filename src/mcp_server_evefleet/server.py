@@ -3,6 +3,7 @@ EVE Fleet Manager MCP Server - Auto-authorizes fleet on client connection
 """
 
 import time
+import logging
 from typing import Optional, Dict, Any, Union
 from mcp.server.fastmcp import FastMCP
 from mcp_server_evefleet.functions import fleet_manager
@@ -10,6 +11,9 @@ from mcp_server_evefleet.static_manage import ShipID_Dict, Static_Dict
 from mcp_server_evefleet.config_load import CONFIG
 from mcp_server_evefleet.IO.API_IO import get_refresh_token
 from mcp_server_evefleet.IO.fleet_api import get_sso_fleetid
+
+# Logger
+logger = logging.getLogger(__name__)
 
 # Global state
 fleet_mgr: Optional[fleet_manager] = None
@@ -24,7 +28,7 @@ def fleet_authorize_with_retry(max_retries: int = 3, force_refresh: bool = False
     
     for attempt in range(max_retries):
         try:
-            print(f"Fleet authorization attempt {attempt + 1}/{max_retries}")
+            logger.info(f"Fleet authorization attempt {attempt + 1}/{max_retries}")
             
             system_dict = Static_Dict('setting/system_dict.yaml','systems','solar_system')
             ship_dict = ShipID_Dict()
@@ -44,13 +48,13 @@ def fleet_authorize_with_retry(max_retries: int = 3, force_refresh: bool = False
                 "character": character_name, "fleet_id": fleet_id
             })
             
-            print(f"[SUCCESS] Fleet authorized for {character_name} (Fleet: {fleet_id})")
+            logger.info(f"[SUCCESS] Fleet authorized for {character_name} (Fleet: {fleet_id})")
             return {"success": True, "character": character_name, "fleet_id": fleet_id, 
                    "fleet_data": fleet_mgr.output_fleet_static()}
             
         except Exception as e:
             error_msg = f"Attempt {attempt + 1} failed: {str(e)}"
-            print(error_msg)
+            logger.error(error_msg)
             
             if attempt < max_retries - 1:
                 time.sleep((attempt + 1) * 2)  # Exponential backoff
@@ -76,13 +80,13 @@ def get_fleet_status() -> Dict[str, Any]:
 
 # Create MCP server and auto-authorize
 mcp = FastMCP("EVE Fleet Manager")
-print("Starting EVE Fleet Manager MCP Server...")
+logger.info("Starting EVE Fleet Manager MCP Server...")
 startup_result = fleet_authorize_with_retry()
 
 if startup_result["success"]:
-    print(f"[READY] Fleet: {startup_result['fleet_id']}, Character: {startup_result['character']}")
+    logger.info(f"[READY] Fleet: {startup_result['fleet_id']}, Character: {startup_result['character']}")
 else:
-    print(f"[ERROR] Started with authorization error: {startup_result['error']}, waiting for Client call to retry...")
+    logger.error(f"[ERROR] Started with authorization error: {startup_result['error']}, waiting for Client call to retry...")
 
 ## MCP Tools
 # ship dict function
@@ -160,7 +164,7 @@ def invite_to_fleet(ids_or_names: list) -> Dict[str, Any]:
         else:
             char_ids = fleet_mgr.char_dict.update_names([str(e_item)])
             char_id_list.extend(char_ids)
-
+    logger.info(f"Preparing to invite characters: {char_id_list}")
     try:
         fleet_mgr.fleet_invite(char_id_list)
         return {
@@ -194,7 +198,7 @@ def kick_from_fleet(ids_or_names: list, sleep_time: float = 0.1) -> Dict[str, An
         else:
             char_ids = fleet_mgr.char_dict.update_names([str(e_item)])
             char_id_list.extend(char_ids)
-    print(f"Preparing to kick characters: {char_id_list}")
+    logger.info(f"Preparing to kick characters: {char_id_list}")
     try:
         fleet_mgr.fleet_kick(char_id_list, sleep_time)
         return {
