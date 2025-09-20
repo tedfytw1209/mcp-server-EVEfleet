@@ -1,5 +1,4 @@
 import yaml
-import os
 
 def set_globals_from_dict(d):
     for key, value in d.items():

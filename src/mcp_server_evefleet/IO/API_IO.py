@@ -12,10 +12,10 @@ import time
 from urllib.parse import urlparse, parse_qs
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from sso.shared_flow import print_auth_url
-from sso.shared_flow import send_token_request
-from sso.shared_flow import handle_sso_token_response_token
-from config_load import CONFIG
+from mcp_server_evefleet.sso.shared_flow import print_auth_url
+from mcp_server_evefleet.sso.shared_flow import send_token_request
+from mcp_server_evefleet.sso.shared_flow import handle_sso_token_response_token
+from mcp_server_evefleet.config_load import CONFIG
 
 SSO_clientid = CONFIG['SSO_clientid']
 SSO_key = CONFIG['SSO_key']

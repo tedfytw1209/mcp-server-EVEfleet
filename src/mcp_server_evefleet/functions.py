@@ -11,8 +11,8 @@ from collections import defaultdict
 from multiprocessing.dummy import Pool as ThreadPool
 from typing import Optional, Dict, List, Tuple, Any, Union
 from functools import wraps
-from IO.API_IO import get_char_info
-from IO.fleet_api import (put_sso_invitation,
+from mcp_server_evefleet.IO.API_IO import get_char_info
+from mcp_server_evefleet.IO.fleet_api import (put_sso_invitation,
                           put_sso_move,
                           get_sso_fleetmotd,
                           get_sso_fleetmembers,
@@ -22,7 +22,7 @@ from IO.fleet_api import (put_sso_invitation,
                           del_sso_kick,
                           put_sso_fleet,
                           )
-from static_manage import CharID_Dict,ShipID_Dict,Static_Dict
+from mcp_server_evefleet.static_manage import CharID_Dict,ShipID_Dict,Static_Dict
 
 class loop_memory:
     def __init__(self, max_size=10):

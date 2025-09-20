@@ -5,11 +5,11 @@ EVE Fleet Manager MCP Server - Auto-authorizes fleet on client connection
 import time
 from typing import Optional, Dict, Any, Union
 from mcp.server.fastmcp import FastMCP
-from functions import fleet_manager
-from static_manage import ShipID_Dict, Static_Dict
-from config_load import CONFIG
-from IO.API_IO import get_refresh_token
-from IO.fleet_api import get_sso_fleetid
+from mcp_server_evefleet.functions import fleet_manager
+from mcp_server_evefleet.static_manage import ShipID_Dict, Static_Dict
+from mcp_server_evefleet.config_load import CONFIG
+from mcp_server_evefleet.IO.API_IO import get_refresh_token
+from mcp_server_evefleet.IO.fleet_api import get_sso_fleetid
 
 # Global state
 fleet_mgr: Optional[fleet_manager] = None

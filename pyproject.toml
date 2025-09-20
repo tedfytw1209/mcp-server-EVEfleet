@@ -21,3 +21,11 @@ dependencies = [
     "sniffio>=1.0.0",
     "urllib3>=2.2.0",
 ]
+
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

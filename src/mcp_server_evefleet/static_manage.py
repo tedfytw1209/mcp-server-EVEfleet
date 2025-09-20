@@ -7,7 +7,7 @@ from pathlib import Path
 import csv
 import yaml
 
-from IO.API_IO import (post_name2id, post_id2name)
+from mcp_server_evefleet.IO.API_IO import (post_name2id, post_id2name)
 
 #manage char name<->char id
 class CharID_Dict():
