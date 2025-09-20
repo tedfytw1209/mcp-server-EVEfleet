@@ -20,7 +20,6 @@ from mcp_server_evefleet.config_load import CONFIG
 from platformdirs import user_config_dir
 
 SSO_clientid = CONFIG['SSO_clientid']
-SSO_key = CONFIG['SSO_key']
 SSO_callback = CONFIG['SSO_callback']
 
 # Global variable to store the authorization code

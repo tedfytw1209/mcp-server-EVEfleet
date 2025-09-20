@@ -1,5 +1,4 @@
 SSO_clientid: "bcc607076aa84f959e73a2284424580c"
-SSO_key: "eat_PoGY9bTnuh99oYHRokWZHegRmYWrAjKW_4DDAXX"
 SSO_callback: "http://localhost:8080/callback"
 MONITOR_MARKS:
   - 'x'
