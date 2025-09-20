@@ -123,7 +123,7 @@ def handle_sso_token_response(sso_response):
         print("\nSSO response JSON is: {}".format(sso_response.json()))
 
 #handle_sso_response_token
-def handle_sso_token_response_token(sso_response,file_name='refresh_token.txt'):
+def handle_sso_token_response_token(sso_response):
     """Handles the authorization code response from the EVE SSO.
 
     Args:
@@ -135,8 +135,6 @@ def handle_sso_token_response_token(sso_response,file_name='refresh_token.txt'):
         data = sso_response.json()
         access_token = data["access_token"]
         refresh_token = data['refresh_token']
-        with open(file_name,'w') as f:
-            f.write(refresh_token)
         print("\nVerifying access token JWT...")
         jwt = validate_eve_jwt(access_token)
         character_id = jwt["sub"].split(":")[2]

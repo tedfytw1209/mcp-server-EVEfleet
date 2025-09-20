@@ -1,5 +1,6 @@
 #import
 import os
+from pathlib import Path
 import base64
 import hashlib
 import secrets
@@ -16,6 +17,7 @@ from mcp_server_evefleet.sso.shared_flow import print_auth_url
 from mcp_server_evefleet.sso.shared_flow import send_token_request
 from mcp_server_evefleet.sso.shared_flow import handle_sso_token_response_token
 from mcp_server_evefleet.config_load import CONFIG
+from platformdirs import user_config_dir
 
 SSO_clientid = CONFIG['SSO_clientid']
 SSO_key = CONFIG['SSO_key']
@@ -23,6 +25,15 @@ SSO_callback = CONFIG['SSO_callback']
 
 # Global variable to store the authorization code
 auth_code_result = None
+
+# App-specific config dir for storing refresh token cross-platform
+APP_NAME = "mcp_server_evefleet"
+APP_AUTHOR = "mcp_server_evefleet"
+
+def _default_token_path() -> Path:
+    cfg_dir = Path(user_config_dir(APP_NAME, APP_AUTHOR))
+    cfg_dir.mkdir(parents=True, exist_ok=True)
+    return cfg_dir / "refresh_token.txt"
 
 class CallbackHandler(BaseHTTPRequestHandler):
     """HTTP handler to capture the OAuth callback"""
@@ -120,7 +131,7 @@ def get_auth_url_with_callback(client_id, code_challenge, callback_url="http://l
     
     return full_auth_url
 
-def get_refresh_token(file_name='refresh_token.txt', reset=False, use_browser=True):
+def get_refresh_token(file_name: str | None = None, reset: bool = False, use_browser: bool = True):
     """
     Get refresh token for EVE SSO authentication
     
@@ -132,7 +143,22 @@ def get_refresh_token(file_name='refresh_token.txt', reset=False, use_browser=Tr
     Returns:
         tuple: (refresh_token, access_token, character_id, character_name)
     """
-    if not os.path.isfile(file_name) or reset:
+    # Resolve token path
+    if file_name:
+        token_path = Path(file_name)
+        # Treat bare filename as request for default app location
+        if token_path.name == 'refresh_token.txt' and (not token_path.parent or str(token_path.parent) in ('.', '')):
+            token_path = _default_token_path()
+    else:
+        token_path = _default_token_path()
+
+    # Backward compatibility: prefer existing CWD token if app path missing
+    cwd_token = Path('refresh_token.txt')
+    if not token_path.exists() and cwd_token.exists() and not reset:
+        token_path = cwd_token
+    print(f"Token path: {token_path}")
+
+    if not token_path.is_file() or reset:
         random = base64.urlsafe_b64encode(secrets.token_bytes(32))
         m = hashlib.sha256()
         m.update(random)
@@ -217,10 +243,10 @@ def get_refresh_token(file_name='refresh_token.txt', reset=False, use_browser=Tr
             "code_verifier": code_verifier
         }
         res = send_token_request(form_values)
-        refresh_token, access_token, character_id, character_name = handle_sso_token_response_token(res, file_name=file_name)
+        refresh_token, access_token, character_id, character_name = handle_sso_token_response_token(res)
     else:
         # Use existing refresh token
-        with open(file_name,'r') as f:
+        with token_path.open('r', encoding='utf-8') as f:
             refresh_token = f.read()
         form_values = {
             "grant_type": "refresh_token",
@@ -229,12 +255,24 @@ def get_refresh_token(file_name='refresh_token.txt', reset=False, use_browser=Tr
         }
         try:
             res = send_token_request(form_values)
-            refresh_token, access_token, character_id, character_name = handle_sso_token_response_token(res, file_name=file_name)
+            refresh_token, access_token, character_id, character_name = handle_sso_token_response_token(res)
         except Exception as e:
             print(f"Token refresh failed: {e}")
             print("Please try again")
-            return get_refresh_token(file_name, reset=True, use_browser=use_browser)
-    
+            return get_refresh_token(str(token_path), reset=True, use_browser=use_browser)
+
+    # Persist token to a proper path
+    try:
+        # If user provided a custom path (with a directory), honor it; otherwise use default app path
+        if file_name and Path(file_name).parent not in (Path('.'), Path('')) and Path(file_name).parent != Path('.').resolve():
+            final_path = Path(file_name)
+        else:
+            final_path = _default_token_path()
+        final_path.parent.mkdir(parents=True, exist_ok=True)
+        with final_path.open('w', encoding='utf-8') as f:
+            f.write(refresh_token)
+    except Exception as e:
+        print(f"Warning: failed to write refresh token to {final_path}: {e}")
     character_id = int(character_id)
     return refresh_token, access_token, character_id, character_name
 

@@ -28,8 +28,8 @@ def fleet_authorize_with_retry(max_retries: int = 3, force_refresh: bool = False
             
             system_dict = Static_Dict('setting/system_dict.yaml','systems','solar_system')
             ship_dict = ShipID_Dict()
-            # Get tokens and initialize
-            _, access_token, character_id, character_name = get_refresh_token("refresh_token.txt", force_refresh)
+            # Get tokens and initialize (cross-platform path by default)
+            _, access_token, character_id, character_name = get_refresh_token(reset=force_refresh)
             
             # Create fleet manager
             fleet_id = get_sso_fleetid(access_token, character_id, character_name)
@@ -82,7 +82,7 @@ startup_result = fleet_authorize_with_retry()
 if startup_result["success"]:
     print(f"[READY] Fleet: {startup_result['fleet_id']}, Character: {startup_result['character']}")
 else:
-    print(f"[ERROR] Started with authorization error: {startup_result['error']}")
+    print(f"[ERROR] Started with authorization error: {startup_result['error']}, waiting for Client call to retry...")
 
 ## MCP Tools
 # ship dict function
@@ -371,3 +371,11 @@ def fleet_prompt(action: str = "status") -> str:
         "structure": "Manage fleet wing and squad structure for optimal organization. Understand current hierarchy, plan structural changes, coordinate command assignments, optimize tactical control."
     }
     return prompts.get(action, "Help manage EVE Online fleet operations. Available: status, formation, invite, kick, analysis, history, structure.")
+
+@mcp.tool()
+def ping() -> dict:
+    """Health check"""
+    return {"ok": True}
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")

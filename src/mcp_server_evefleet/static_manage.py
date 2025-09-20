@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 import csv
 import yaml
+from importlib import resources
 
 from mcp_server_evefleet.IO.API_IO import (post_name2id, post_id2name)
 
@@ -21,8 +22,14 @@ class CharID_Dict():
                 self.char_name2id = yaml.safe_load(file)
             self.char_id2name = {v:k for k,v in self.char_name2id.items()}
         else:
-            self.char_name2id = {}
-            self.char_id2name = {}
+            # Fallback: load defaults from packaged resource if available
+            try:
+                with resources.files('mcp_server_evefleet').joinpath(init_file_name).open('r') as file:
+                    self.char_name2id = yaml.safe_load(file) or {}
+                self.char_id2name = {v:k for k,v in self.char_name2id.items()}
+            except FileNotFoundError:
+                self.char_name2id = {}
+                self.char_id2name = {}
         self.init_file = init_file
     #check
     def check_names(self,names_list):
@@ -82,18 +89,32 @@ class Static_Dict(CharID_Dict):
                 self.char_name2id = yaml.safe_load(file)
             self.char_id2name = {v:k for k,v in self.char_name2id.items()}
         else:
-            self.char_name2id = {}
-            self.char_id2name = {}
+            # Fallback: load defaults from packaged resource if available
+            try:
+                with resources.files('mcp_server_evefleet').joinpath(init_file_name).open('r') as file:
+                    self.char_name2id = yaml.safe_load(file) or {}
+                self.char_id2name = {v:k for k,v in self.char_name2id.items()}
+            except FileNotFoundError:
+                self.char_name2id = {}
+                self.char_id2name = {}
         self.init_file = init_file
 
 #Ship Dict
 class ShipID_Dict():
     def __init__(self,
                  init_file_name='setting/shipid_list.csv') -> None:
-        with open(init_file_name) as csvfile:
-            rows = csv.reader(csvfile)
-            print('Loading ship id list from',init_file_name)
-            self.update_ids(rows)
+        init_path = Path(init_file_name)
+        if init_path.exists():
+            with open(init_path) as csvfile:
+                rows = csv.reader(csvfile)
+                print('Loading ship id list from',init_file_name)
+                self.update_ids(rows)
+        else:
+            # Fallback: load from packaged resource
+            with resources.files('mcp_server_evefleet').joinpath(init_file_name).open('r') as csvfile:
+                rows = csv.reader(csvfile)
+                print('Loading ship id list from packaged resource',init_file_name)
+                self.update_ids(rows)
     #update ids
     def update_ids(self,csv_rows):
         self.ship_id2name, self.ship_name2id, self.ship_id2group, self.ship_name2group, self.group_id2name, self.name2group_id = {},{},{},{},{},{}
