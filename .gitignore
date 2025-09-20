@@ -11,3 +11,6 @@ wheels/
 refresh_token.txt
 fleet_support.log
 mcp-publisher.exe
+server.json
+.mcpregistry_github_token
+.mcpregistry_registry_token
